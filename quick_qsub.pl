@@ -1,11 +1,10 @@
 #!/usr/bin/perl -w
-# Author: Ruan Jue <ruanjue@gmail.com>
+# Original Author: Ruan Jue <ruanjue@gmail.com>
 #
-## Example: ./quick_qsub.pl [=job1=] {-l nodes=1:ppn=8} $'asda'\sdas\'das$$d | kkk ... *** > 5345'
+## Example: ./quick_qsub.pl [=job1=] $'asda'\sdas\'das$$d | kkk ... *** > 5345'
 use warnings;
 use strict;
 
-my $queue = 'all.q';
 my $cmd = '';
 
 if(@ARGV){
@@ -16,22 +15,27 @@ if(@ARGV){
 	}
 }
 
-die(qq{Usage: $0 [=<job_name>=] [\{qsub parameters\}] command\n}) unless($cmd);
+die(qq{Usage: $0 [=<job_name>,<mem>,<threads>=] command\n}) unless($cmd);
 
 chomp $cmd;
 
 my $name = undef;
-if($cmd =~/^=(\S+)=/){
+my $mem = "16G";
+my $nThreads = "4";
+if ($cmd =~ /^=([^,]+),([^,]+),([^,]+)=/) {
 	$name = $1;
-	$cmd = substr($cmd, length($name) + 2);
+	$mem = $2;
+	$nThreads = $3;
+	$cmd = substr($cmd, length($name) + length($mem) + length($nThreads) + 4);
 	$cmd =~s/^\s+//;
 }
-my $qsub_param = '';
-if($cmd =~/^{(.+?)}\s/){
-	$qsub_param = $1;
-	$cmd = substr($cmd, length($qsub_param) + 3);
-	$cmd =~s/^\s+//;
-}
+
+# my $qsub_param = '';
+# if($cmd =~/^{(.+?)}\s/){
+#	$qsub_param = $1;
+#	$cmd = substr($cmd, length($qsub_param) + 3);
+#	$cmd =~s/^\s+//;
+# }
 
 my $pwd = `pwd`;
 chomp $pwd;
@@ -56,14 +60,14 @@ if(not -d $history){
 open(OUT, ">$history/qsub.cmd.$name.$$.sh") or die($!);
 print OUT qq{#!/bin/bash
 #\$ -N $name
+#\$ -pe threads $nThreads
+#\$ -l mem_free=$mem
 #\$ -o $history/qsub.log.$name.$$
 #\$ -e $history/qsub.err.$name.$$
-#\$ -q $queue
 #\$ -cwd
 #\$ -V
-#\$ -M qgong\@coh.org
-#\$ -m as
-# qsub parameter: "$qsub_param"
+#\$ -S "/usr/bin/env bash"
+
 uname -a
 cd $pwd
 date
@@ -76,11 +80,11 @@ close OUT;
 
 exit if($ENV{NO_QSUB});
 
-my $job_id = `qsub $qsub_param $history/qsub.cmd.$name.$$.sh`;
+my $job_id = `qsub < $history/qsub.cmd.$name.$$.sh`;
 chomp $job_id;
 my $date = `date`;
 chomp $date;
-$job_id=~/(\d+)/;
+$job_id=~/([0-9a-f]+)/;
 print "[$pwd] $cmd\njob_id: $1\n";
 
 open(OUT, ">>$home/quick_qsub.history") or die($!);
