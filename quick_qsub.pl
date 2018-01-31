@@ -9,12 +9,7 @@ my $cmd = '';
 
 if(@ARGV){
 	$cmd = join(" ", @ARGV);
-} else {
-	while(<>){
-		$cmd .= $_;
-	}
 }
-
 die(qq{Usage: $0 [=<job_name>,<mem>,<threads>=] command\n}) unless($cmd);
 
 chomp $cmd;
@@ -84,7 +79,7 @@ my $job_id = `qsub < $history/qsub.cmd.$name.$$.sh`;
 chomp $job_id;
 my $date = `date`;
 chomp $date;
-$job_id=~/([0-9a-f]+)/;
+$job_id=~/([0-9a-f]{17})/;
 print "[$pwd] $cmd\njob_id: $1\n";
 
 open(OUT, ">>$home/quick_qsub.history") or die($!);
